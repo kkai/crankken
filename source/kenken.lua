@@ -412,10 +412,16 @@ end
 function Kenken:drawCompleted()
     gfx.clear()
     
-    local font = gfx.getFont()
+    -- Use system font for completion screen
+    local systemFont = gfx.getSystemFont()
+    gfx.setFont(systemFont)
+    
     local title = "Puzzle Completed!"
-    local titleWidth = font:getTextWidth(title)
+    local titleWidth = systemFont:getTextWidth(title)
     gfx.drawText(title, (400 - titleWidth) / 2, 100)
     
     gfx.drawText("🅰 New Game", 150, 150)
+    
+    -- Reset to default font
+    gfx.setFont(gfx.getFont())
 end
