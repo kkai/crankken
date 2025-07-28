@@ -29,6 +29,10 @@ function CrankKen:init()
     -- Crank tracking for size selection
     self.sizeCrankAccumulator = 0
     
+    -- Timer tracking variables
+    self.puzzleStartTime = 0
+    self.completionTime = 0
+    
     -- Load Mini Sans font for cage targets
     self.smallFont = gfx.font.new("fonts/Mini Sans")
 end
@@ -100,6 +104,9 @@ function CrankKen:startGame(size)
     self.state = STATE_PLAYING
     self.puzzle = self:generatePuzzle(size)
     self.playerGrid = {}
+    
+    -- Timer will be started when puzzle is first drawn
+    self.puzzleStartTime = 0
     
     -- Calculate centered grid position
     local gridWidth = size * self.cellSize
@@ -281,18 +288,43 @@ function CrankKen:updateGame()
     end
     
     
-    if moved then
-        self:drawGame()
-        if self:checkCompletion() then
-            self.state = STATE_COMPLETED
-            self:drawCompleted()
-        end
+    -- Always redraw to keep timer updated
+    self:drawGame()
+    
+    if moved and self:checkCompletion() then
+        -- Calculate completion time
+        self.completionTime = pd.getCurrentTimeMilliseconds() - self.puzzleStartTime
+        self.state = STATE_COMPLETED
+        self:drawGame()  -- Redraw the game first
+        self:drawCompletionPopup()  -- Then draw popup overlay
     end
 end
 
 function CrankKen:drawGame()
     gfx.clear()
     
+    -- Start timer on first draw
+    if self.puzzleStartTime == 0 then
+        self.puzzleStartTime = pd.getCurrentTimeMilliseconds()
+    end
+    
+    -- Draw elapsed time in upper right corner
+    if self.puzzleStartTime > 0 then
+        local elapsedMs = pd.getCurrentTimeMilliseconds() - self.puzzleStartTime
+        local elapsedSeconds = math.floor(elapsedMs / 1000)
+        local minutes = math.floor(elapsedSeconds / 60)
+        local seconds = elapsedSeconds % 60
+        local timeText = string.format("%02d:%02d", minutes, seconds)
+        
+        -- Use system font for timer consistency
+        local systemFont = gfx.getSystemFont()
+        gfx.setFont(systemFont)
+        local textWidth = systemFont:getTextWidth(timeText)
+        gfx.drawText(timeText, 400 - textWidth - 10, 10)
+        
+        -- Reset to default font for game drawing
+        gfx.setFont(gfx.getFont())
+    end
     
     -- First pass: Draw cage boundaries and backgrounds
     self:drawCageBoundaries()
@@ -499,7 +531,44 @@ function CrankKen:updateCompleted()
     end
 end
 
+function CrankKen:drawCompletionPopup()
+    -- Draw popup box (smaller size)
+    local popupWidth = 200
+    local popupHeight = 80
+    local popupX = (400 - popupWidth) / 2
+    local popupY = (240 - popupHeight) / 2
+    
+    -- Draw popup background
+    gfx.setColor(gfx.kColorWhite)
+    gfx.fillRect(popupX, popupY, popupWidth, popupHeight)
+    gfx.setColor(gfx.kColorBlack)
+    gfx.drawRect(popupX, popupY, popupWidth, popupHeight)
+    
+    -- Format completion time
+    local elapsedSeconds = math.floor(self.completionTime / 1000)
+    local minutes = math.floor(elapsedSeconds / 60)
+    local seconds = elapsedSeconds % 60
+    local timeText = string.format("%02d:%02d", minutes, seconds)
+    
+    -- Use system font for all text in compact popup
+    local systemFont = gfx.getSystemFont()
+    gfx.setFont(systemFont)
+    
+    local title = "Completed!"
+    local titleWidth = systemFont:getTextWidth(title)
+    gfx.drawText(title, popupX + (popupWidth - titleWidth) / 2, popupY + 10)
+    
+    local timeLabel = "Time: " .. timeText
+    local timeLabelWidth = systemFont:getTextWidth(timeLabel)
+    gfx.drawText(timeLabel, popupX + (popupWidth - timeLabelWidth) / 2, popupY + 30)
+    
+    local buttonText = "Ⓐ New Game"
+    local buttonTextWidth = systemFont:getTextWidth(buttonText)
+    gfx.drawText(buttonText, popupX + (popupWidth - buttonTextWidth) / 2, popupY + 50)
+end
+
 function CrankKen:drawCompleted()
+    -- This function is no longer used, kept for compatibility
     gfx.clear()
     
     -- Use system font for completion screen
