@@ -33,6 +33,9 @@ function CrankKen:init()
     self.puzzleStartTime = 0
     self.completionTime = 0
     
+    -- Quit button selection state
+    self.quitButtonSelected = false
+    
     -- Load Mini Sans font for cage targets
     self.smallFont = gfx.font.new("fonts/Mini Sans")
 end
@@ -52,7 +55,7 @@ function CrankKen:showSizeSelection()
     -- Use smaller font for "Select Size"
     local font = gfx.getFont()
     gfx.setFont(font)
-    gfx.drawText("Select Size", 50, 50)
+    gfx.drawText("select size", 50, 50)
     
     local sizes = {3, 4, 5, 6}
     for i, size in ipairs(sizes) do
@@ -67,10 +70,19 @@ function CrankKen:showSizeSelection()
     end
     
     gfx.drawText("Ⓐ to start a game", 50, 200)
-    gfx.drawText("⬆⬇ Select Size", 200, 200)
     
     -- Draw grid preview on the right
     self:drawGridPreview(self.selectedSize)
+    
+    -- Draw control instructions centered under the preview
+    local controlText = "⬆⬇ select size"
+    local font = gfx.getFont()
+    local textWidth = font:getTextWidth(controlText)
+    local dialogEndX = 150  -- Same as in drawGridPreview
+    local screenEndX = 400
+    local availableWidth = screenEndX - dialogEndX
+    local centerX = dialogEndX + availableWidth / 2
+    gfx.drawText(controlText, centerX - textWidth / 2, 200)
 end
 
 function CrankKen:drawGridPreview(size)
@@ -107,6 +119,9 @@ function CrankKen:startGame(size)
     
     -- Timer will be started when puzzle is first drawn
     self.puzzleStartTime = 0
+    
+    -- Reset quit button selection
+    self.quitButtonSelected = false
     
     -- Calculate centered grid position
     local gridWidth = size * self.cellSize
@@ -216,27 +231,48 @@ end
 function CrankKen:updateGame()
     local moved = false
     
-    if pd.buttonJustPressed(pd.kButtonUp) and self.selectedCell.y > 1 then
-        self.selectedCell.y -= 1
-        moved = true
-    elseif pd.buttonJustPressed(pd.kButtonDown) and self.selectedCell.y < self.puzzle.size then
-        self.selectedCell.y += 1
-        moved = true
-    elseif pd.buttonJustPressed(pd.kButtonLeft) and self.selectedCell.x > 1 then
+    -- Handle navigation between grid and quit button
+    if pd.buttonJustPressed(pd.kButtonUp) then
+        if self.quitButtonSelected then
+            -- Move from quit button to bottom row of grid
+            self.quitButtonSelected = false
+            self.selectedCell.y = self.puzzle.size
+            moved = true
+        elseif self.selectedCell.y > 1 then
+            self.selectedCell.y -= 1
+            moved = true
+        end
+    elseif pd.buttonJustPressed(pd.kButtonDown) then
+        if not self.quitButtonSelected and self.selectedCell.y < self.puzzle.size then
+            self.selectedCell.y += 1
+            moved = true
+        elseif not self.quitButtonSelected and self.selectedCell.y == self.puzzle.size then
+            -- Move from bottom row to quit button
+            self.quitButtonSelected = true
+            moved = true
+        end
+    elseif pd.buttonJustPressed(pd.kButtonLeft) and not self.quitButtonSelected and self.selectedCell.x > 1 then
         self.selectedCell.x -= 1
         moved = true
-    elseif pd.buttonJustPressed(pd.kButtonRight) and self.selectedCell.x < self.puzzle.size then
+    elseif pd.buttonJustPressed(pd.kButtonRight) and not self.quitButtonSelected and self.selectedCell.x < self.puzzle.size then
         self.selectedCell.x += 1
         moved = true
     end
     
-    -- Handle number input with A and B buttons (cycle through 0,1,2,...,size)
+    -- Handle A button press
     if pd.buttonJustPressed(pd.kButtonA) then
-        local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
-        currentValue = (currentValue + 1) % (self.puzzle.size + 1)
-        self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
-        moved = true
-    elseif pd.buttonJustPressed(pd.kButtonB) then
+        if self.quitButtonSelected then
+            -- Return to start screen
+            self:showSizeSelection()
+            return
+        else
+            -- Handle number input (cycle through 0,1,2,...,size)
+            local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
+            currentValue = (currentValue + 1) % (self.puzzle.size + 1)
+            self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
+            moved = true
+        end
+    elseif pd.buttonJustPressed(pd.kButtonB) and not self.quitButtonSelected then
         local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
         currentValue = currentValue - 1
         if currentValue < 0 then
@@ -246,45 +282,47 @@ function CrankKen:updateGame()
         moved = true
     end
     
-    -- Handle crank input for number cycling
-    local currentCrankPosition = pd.getCrankPosition()
-    local crankDelta = currentCrankPosition - self.lastCrankPosition
-    
-    -- Handle wraparound at 0/360 degrees
-    if crankDelta > 180 then
-        crankDelta = crankDelta - 360
-    elseif crankDelta < -180 then
-        crankDelta = crankDelta + 360
-    end
-    
-    self.crankAccumulator = self.crankAccumulator + crankDelta
-    self.lastCrankPosition = currentCrankPosition
-    
-    -- Trigger number change on half rotation (180 degrees)
-    if math.abs(self.crankAccumulator) >= 180 then
-        local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
+    -- Handle crank input for number cycling (only when not on quit button)
+    if not self.quitButtonSelected then
+        local currentCrankPosition = pd.getCrankPosition()
+        local crankDelta = currentCrankPosition - self.lastCrankPosition
         
-        if self.crankAccumulator >= 180 then
-            -- Clockwise rotation - increment number
-            currentValue = (currentValue + 1) % (self.puzzle.size + 1)
-            self.crankAccumulator = self.crankAccumulator - 180
-        elseif self.crankAccumulator <= -180 then
-            -- Counter-clockwise rotation - decrement number
-            currentValue = currentValue - 1
-            if currentValue < 0 then
-                currentValue = self.puzzle.size
-            end
-            self.crankAccumulator = self.crankAccumulator + 180
+        -- Handle wraparound at 0/360 degrees
+        if crankDelta > 180 then
+            crankDelta = crankDelta - 360
+        elseif crankDelta < -180 then
+            crankDelta = crankDelta + 360
         end
         
-        self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
-        moved = true
-    end
-    
-    -- Clear cell with menu button
-    if pd.buttonJustPressed(pd.kButtonMenu) then
-        self.playerGrid[self.selectedCell.x][self.selectedCell.y] = 0
-        moved = true
+        self.crankAccumulator = self.crankAccumulator + crankDelta
+        self.lastCrankPosition = currentCrankPosition
+        
+        -- Trigger number change on half rotation (180 degrees)
+        if math.abs(self.crankAccumulator) >= 180 then
+            local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
+            
+            if self.crankAccumulator >= 180 then
+                -- Clockwise rotation - increment number
+                currentValue = (currentValue + 1) % (self.puzzle.size + 1)
+                self.crankAccumulator = self.crankAccumulator - 180
+            elseif self.crankAccumulator <= -180 then
+                -- Counter-clockwise rotation - decrement number
+                currentValue = currentValue - 1
+                if currentValue < 0 then
+                    currentValue = self.puzzle.size
+                end
+                self.crankAccumulator = self.crankAccumulator + 180
+            end
+            
+            self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
+            moved = true
+        end
+        
+        -- Clear cell with menu button
+        if pd.buttonJustPressed(pd.kButtonMenu) then
+            self.playerGrid[self.selectedCell.x][self.selectedCell.y] = 0
+            moved = true
+        end
     end
     
     
@@ -326,6 +364,24 @@ function CrankKen:drawGame()
         gfx.setFont(gfx.getFont())
     end
     
+    -- Draw quit button in bottom right corner
+    local quitText = "quit"
+    local font = gfx.getFont()
+    local quitWidth = font:getTextWidth(quitText)
+    local quitX = 400 - quitWidth - 10
+    local quitY = 240 - 20
+    
+    if self.quitButtonSelected then
+        -- Highlight quit button when selected (cover whole button)
+        local font = gfx.getFont()
+        local textHeight = font:getHeight()
+        gfx.fillRect(quitX - 2, quitY - 2, quitWidth + 4, textHeight + 4)
+        gfx.setImageDrawMode(gfx.kDrawModeInverted)
+    end
+    
+    gfx.drawText(quitText, quitX, quitY)
+    gfx.setImageDrawMode(gfx.kDrawModeCopy)
+    
     -- First pass: Draw cage boundaries and backgrounds
     self:drawCageBoundaries()
     
@@ -335,8 +391,8 @@ function CrankKen:drawGame()
             local screenX = self.gridOffsetX + (x - 1) * self.cellSize
             local screenY = self.gridOffsetY + (y - 1) * self.cellSize
             
-            -- Highlight selected cell
-            if x == self.selectedCell.x and y == self.selectedCell.y then
+            -- Highlight selected cell (only when not on quit button)
+            if x == self.selectedCell.x and y == self.selectedCell.y and not self.quitButtonSelected then
                 gfx.fillRect(screenX + 2, screenY + 2, self.cellSize - 4, self.cellSize - 4)
                 gfx.setImageDrawMode(gfx.kDrawModeInverted)
             end
