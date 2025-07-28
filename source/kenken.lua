@@ -126,16 +126,16 @@ function Kenken:updateGame()
         moved = true
     end
     
-    -- Handle number input with A and B buttons
+    -- Handle number input with A and B buttons (cycle through 0,1,2,...,size)
     if pd.buttonJustPressed(pd.kButtonA) then
         local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
-        currentValue = (currentValue % self.puzzle.size) + 1
+        currentValue = (currentValue + 1) % (self.puzzle.size + 1)
         self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
         moved = true
     elseif pd.buttonJustPressed(pd.kButtonB) then
         local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
         currentValue = currentValue - 1
-        if currentValue < 1 then
+        if currentValue < 0 then
             currentValue = self.puzzle.size
         end
         self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
