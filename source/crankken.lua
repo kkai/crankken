@@ -38,6 +38,14 @@ function CrankKen:init()
     
     -- Load Mini Sans font for cage targets
     self.smallFont = gfx.font.new("fonts/Mini Sans")
+    
+    -- Load best times from datastore
+    self.bestTimes = pd.datastore.read("besttimes") or {
+        [3] = nil,  -- 3x3 best time in milliseconds
+        [4] = nil,  -- 4x4 best time in milliseconds
+        [5] = nil,  -- 5x5 best time in milliseconds
+        [6] = nil   -- 6x6 best time in milliseconds
+    }
 end
 
 function CrankKen:showSizeSelection()
@@ -74,15 +82,20 @@ function CrankKen:showSizeSelection()
     -- Draw grid preview on the right
     self:drawGridPreview(self.selectedSize)
     
-    -- Draw control instructions centered under the preview
+    -- Draw control instructions centered under the preview using system font
+    local systemFont = gfx.getSystemFont()
+    gfx.setFont(systemFont)
+    
     local controlText = "⬆⬇ select size"
-    local font = gfx.getFont()
-    local textWidth = font:getTextWidth(controlText)
+    local textWidth = systemFont:getTextWidth(controlText)
     local dialogEndX = 150  -- Same as in drawGridPreview
     local screenEndX = 400
     local availableWidth = screenEndX - dialogEndX
     local centerX = dialogEndX + availableWidth / 2
     gfx.drawText(controlText, centerX - textWidth / 2, 200)
+    
+    -- Reset to default font
+    gfx.setFont(gfx.getFont())
 end
 
 function CrankKen:drawGridPreview(size)
@@ -110,6 +123,29 @@ function CrankKen:drawGridPreview(size)
         local screenY = previewStartY + y * previewCellSize
         gfx.drawLine(previewStartX, screenY, previewStartX + size * previewCellSize, screenY)
     end
+    
+    -- Display best time above the grid using Mini Sans font
+    gfx.setFont(self.smallFont)
+    
+    local timeText
+    if self.bestTimes[size] then
+        -- Format best time as MM:SS
+        local bestTimeSeconds = math.floor(self.bestTimes[size] / 1000)
+        local minutes = math.floor(bestTimeSeconds / 60)
+        local seconds = bestTimeSeconds % 60
+        timeText = string.format("%02d:%02d", minutes, seconds)
+    else
+        timeText = "--:--"
+    end
+    
+    local bestTimeText = "Best Time: " .. timeText
+    local bestTimeX = previewStartX  -- Left align with the grid
+    local bestTimeY = previewStartY - 15  -- Position above the grid
+    
+    gfx.drawText(bestTimeText, bestTimeX, bestTimeY)
+    
+    -- Reset font
+    gfx.setFont(gfx.getFont())
 end
 
 function CrankKen:startGame(size)
@@ -332,6 +368,15 @@ function CrankKen:updateGame()
     if moved and self:checkCompletion() then
         -- Calculate completion time
         self.completionTime = pd.getCurrentTimeMilliseconds() - self.puzzleStartTime
+        
+        -- Update best time if this is a new record
+        local currentSize = self.puzzle.size
+        if not self.bestTimes[currentSize] or self.completionTime < self.bestTimes[currentSize] then
+            self.bestTimes[currentSize] = self.completionTime
+            -- Save updated best times to datastore
+            pd.datastore.write(self.bestTimes, "besttimes")
+        end
+        
         self.state = STATE_COMPLETED
         self:drawGame()  -- Redraw the game first
         self:drawCompletionPopup()  -- Then draw popup overlay
