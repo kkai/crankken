@@ -142,11 +142,12 @@ function Kenken:updateGame()
         moved = true
     end
     
-    -- Clear cell with crank button
+    -- Clear cell with menu button
     if pd.buttonJustPressed(pd.kButtonMenu) then
         self.playerGrid[self.selectedCell.x][self.selectedCell.y] = 0
         moved = true
     end
+    
     
     if moved then
         self:drawGame()
@@ -190,6 +191,7 @@ function Kenken:drawGame()
     
     -- Third pass: Draw cage targets
     self:drawCageTargets()
+    
     
 end
 
