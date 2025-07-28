@@ -26,6 +26,9 @@ function CrankKen:init()
     self.lastCrankPosition = pd.getCrankPosition()
     self.crankAccumulator = 0
     
+    -- Crank tracking for size selection
+    self.sizeCrankAccumulator = 0
+    
     -- Load Mini Sans font for cage targets
     self.smallFont = gfx.font.new("fonts/Mini Sans")
 end
@@ -34,10 +37,17 @@ function CrankKen:showSizeSelection()
     self.state = STATE_SIZE_SELECTION
     gfx.clear()
     
+    -- Use system font for bigger title
+    local systemFont = gfx.getSystemFont()
+    gfx.setFont(systemFont)
+    
+    -- Draw title left aligned
+    gfx.drawText("CrankKen", 50, 20)
+    
+    -- Use smaller font for "Select Size"
     local font = gfx.getFont()
-    local title = "CrankKen - Select Size"
-    local titleWidth = font:getTextWidth(title)
-    gfx.drawText(title, (400 - titleWidth) / 2, 30)
+    gfx.setFont(font)
+    gfx.drawText("Select Size", 50, 50)
     
     local sizes = {3, 4, 5, 6}
     for i, size in ipairs(sizes) do
@@ -51,8 +61,38 @@ function CrankKen:showSizeSelection()
         gfx.setImageDrawMode(gfx.kDrawModeCopy)
     end
     
-    gfx.drawText("🅰 Start Game", 50, 200)
+    gfx.drawText("Ⓐ to start a game", 50, 200)
     gfx.drawText("⬆⬇ Select Size", 200, 200)
+    
+    -- Draw grid preview on the right
+    self:drawGridPreview(self.selectedSize)
+end
+
+function CrankKen:drawGridPreview(size)
+    -- Calculate cell size to fit within screen bounds
+    -- Playdate screen is 400x240, leave margin for 6x6 case
+    local maxGridSize = 120  -- Maximum pixels for the grid
+    local previewCellSize = math.floor(maxGridSize / size)
+    local gridPixelSize = size * previewCellSize
+    
+    -- Center between selection dialog and end of screen
+    local dialogEndX = 150  -- Approximate end of the selection dialog
+    local screenEndX = 400  -- Screen width
+    local availableWidth = screenEndX - dialogEndX
+    local previewStartX = dialogEndX + (availableWidth - gridPixelSize) / 2  -- Center in available space
+    local previewStartY = (240 - gridPixelSize) / 2        -- Center vertically on screen
+    
+    -- Draw grid outline
+    gfx.setLineWidth(1)
+    for x = 0, size do
+        local screenX = previewStartX + x * previewCellSize
+        gfx.drawLine(screenX, previewStartY, screenX, previewStartY + size * previewCellSize)
+    end
+    
+    for y = 0, size do
+        local screenY = previewStartY + y * previewCellSize
+        gfx.drawLine(previewStartX, screenY, previewStartX + size * previewCellSize, screenY)
+    end
 end
 
 function CrankKen:startGame(size)
@@ -92,25 +132,74 @@ function CrankKen:update()
 end
 
 function CrankKen:updateSizeSelection()
+    local sizeChanged = false
+    local sizes = {3, 4, 5, 6}
+    
+    -- Handle button input
     if pd.buttonJustPressed(pd.kButtonUp) then
-        local sizes = {3, 4, 5, 6}
         for i, size in ipairs(sizes) do
             if size == self.selectedSize and i > 1 then
                 self.selectedSize = sizes[i - 1]
+                sizeChanged = true
                 break
             end
         end
-        self:showSizeSelection()
     elseif pd.buttonJustPressed(pd.kButtonDown) then
-        local sizes = {3, 4, 5, 6}
         for i, size in ipairs(sizes) do
             if size == self.selectedSize and i < #sizes then
                 self.selectedSize = sizes[i + 1]
+                sizeChanged = true
                 break
             end
         end
+    end
+    
+    -- Handle crank input for size selection
+    local currentCrankPosition = pd.getCrankPosition()
+    local crankDelta = currentCrankPosition - self.lastCrankPosition
+    
+    -- Handle wraparound at 0/360 degrees
+    if crankDelta > 180 then
+        crankDelta = crankDelta - 360
+    elseif crankDelta < -180 then
+        crankDelta = crankDelta + 360
+    end
+    
+    self.sizeCrankAccumulator = self.sizeCrankAccumulator + crankDelta
+    self.lastCrankPosition = currentCrankPosition
+    
+    -- Trigger size change on quarter rotation (90 degrees)
+    if math.abs(self.sizeCrankAccumulator) >= 90 then
+        local currentIndex = 1
+        for i, size in ipairs(sizes) do
+            if size == self.selectedSize then
+                currentIndex = i
+                break
+            end
+        end
+        
+        if self.sizeCrankAccumulator >= 90 then
+            -- Clockwise rotation - next size
+            if currentIndex < #sizes then
+                self.selectedSize = sizes[currentIndex + 1]
+                sizeChanged = true
+            end
+            self.sizeCrankAccumulator = self.sizeCrankAccumulator - 90
+        elseif self.sizeCrankAccumulator <= -90 then
+            -- Counter-clockwise rotation - previous size
+            if currentIndex > 1 then
+                self.selectedSize = sizes[currentIndex - 1]
+                sizeChanged = true
+            end
+            self.sizeCrankAccumulator = self.sizeCrankAccumulator + 90
+        end
+    end
+    
+    if sizeChanged then
         self:showSizeSelection()
-    elseif pd.buttonJustPressed(pd.kButtonA) then
+    end
+    
+    if pd.buttonJustPressed(pd.kButtonA) then
         self:startGame(self.selectedSize)
         self:drawGame()
     end
@@ -420,7 +509,7 @@ function CrankKen:drawCompleted()
     local titleWidth = systemFont:getTextWidth(title)
     gfx.drawText(title, (400 - titleWidth) / 2, 100)
     
-    gfx.drawText("🅰 New Game", 150, 150)
+    gfx.drawText("Ⓐ New Game", 150, 150)
     
     -- Reset to default font
     gfx.setFont(gfx.getFont())
