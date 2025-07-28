@@ -21,6 +21,10 @@ function Kenken:init()
     self.selectedCell = {x = 1, y = 1}
     self.cellSize = 33
     self.puzzleGenerator = PuzzleGenerator()
+    
+    -- Crank tracking variables
+    self.lastCrankPosition = pd.getCrankPosition()
+    self.crankAccumulator = 0
 end
 
 function Kenken:showSizeSelection()
@@ -142,6 +146,41 @@ function Kenken:updateGame()
         moved = true
     end
     
+    -- Handle crank input for number cycling
+    local currentCrankPosition = pd.getCrankPosition()
+    local crankDelta = currentCrankPosition - self.lastCrankPosition
+    
+    -- Handle wraparound at 0/360 degrees
+    if crankDelta > 180 then
+        crankDelta = crankDelta - 360
+    elseif crankDelta < -180 then
+        crankDelta = crankDelta + 360
+    end
+    
+    self.crankAccumulator = self.crankAccumulator + crankDelta
+    self.lastCrankPosition = currentCrankPosition
+    
+    -- Trigger number change on half rotation (180 degrees)
+    if math.abs(self.crankAccumulator) >= 180 then
+        local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
+        
+        if self.crankAccumulator >= 180 then
+            -- Clockwise rotation - increment number
+            currentValue = (currentValue + 1) % (self.puzzle.size + 1)
+            self.crankAccumulator = self.crankAccumulator - 180
+        elseif self.crankAccumulator <= -180 then
+            -- Counter-clockwise rotation - decrement number
+            currentValue = currentValue - 1
+            if currentValue < 0 then
+                currentValue = self.puzzle.size
+            end
+            self.crankAccumulator = self.crankAccumulator + 180
+        end
+        
+        self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
+        moved = true
+    end
+    
     -- Clear cell with menu button
     if pd.buttonJustPressed(pd.kButtonMenu) then
         self.playerGrid[self.selectedCell.x][self.selectedCell.y] = 0
@@ -256,7 +295,7 @@ function Kenken:drawCageTargets()
             local isSelected = (firstCell[1] == self.selectedCell.x and firstCell[2] == self.selectedCell.y)
             
             -- Draw target text in smaller font at top-left corner
-            local smallFont = gfx.getFont(gfx.kFontVariant_Normal)
+            local smallFont = gfx.getSystemFont(gfx.kFontVariant_Normal)
             gfx.setFont(smallFont)
             
             if isSelected then
