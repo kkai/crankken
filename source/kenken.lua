@@ -179,7 +179,7 @@ function Kenken:drawGame()
             -- Draw number if entered
             local value = self.playerGrid[x][y]
             if value > 0 then
-                local textX = screenX + self.cellSize / 2 - 5
+                local textX = screenX + self.cellSize / 2 - 2
                 local textY = screenY + self.cellSize / 2 - 8
                 gfx.drawText(tostring(value), textX, textY)
             end
@@ -250,8 +250,8 @@ function Kenken:drawCageTargets()
                 targetText = targetText .. cage.operation
             end
             
-            -- Draw target text in small font at top-left corner
-            local smallFont = gfx.getFont(gfx.kFontVariant_Bold)
+            -- Draw target text in smaller font at top-left corner
+            local smallFont = gfx.getFont(gfx.kFontVariant_Normal)
             gfx.setFont(smallFont)
             gfx.drawText(targetText, screenX, screenY)
             gfx.setFont(gfx.getFont())
