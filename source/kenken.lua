@@ -19,9 +19,7 @@ function Kenken:init()
     self.puzzle = nil
     self.playerGrid = nil
     self.selectedCell = {x = 1, y = 1}
-    self.cellSize = 35
-    self.gridOffsetX = 40
-    self.gridOffsetY = 40
+    self.cellSize = 33
     self.puzzleGenerator = PuzzleGenerator()
 end
 
@@ -54,6 +52,12 @@ function Kenken:startGame(size)
     self.state = STATE_PLAYING
     self.puzzle = self:generatePuzzle(size)
     self.playerGrid = {}
+    
+    -- Calculate centered grid position
+    local gridWidth = size * self.cellSize
+    local gridHeight = size * self.cellSize
+    self.gridOffsetX = (400 - gridWidth) / 2
+    self.gridOffsetY = (240 - gridHeight) / 2
     
     -- Initialize empty player grid
     for x = 1, size do
@@ -156,8 +160,6 @@ end
 function Kenken:drawGame()
     gfx.clear()
     
-    -- Draw title
-    gfx.drawText("Kenken " .. self.puzzle.size .. "x" .. self.puzzle.size, 10, 10)
     
     -- First pass: Draw cage boundaries and backgrounds
     self:drawCageBoundaries()
@@ -189,9 +191,6 @@ function Kenken:drawGame()
     -- Third pass: Draw cage targets
     self:drawCageTargets()
     
-    -- Draw instructions
-    gfx.drawText("🅰 Next  🅱 Prev  ⚫ Clear", 10, 215)
-    gfx.drawText("⬅➡⬆⬇ Move cursor", 10, 230)
 end
 
 function Kenken:drawCageBoundaries()
