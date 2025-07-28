@@ -25,6 +25,9 @@ function Kenken:init()
     -- Crank tracking variables
     self.lastCrankPosition = pd.getCrankPosition()
     self.crankAccumulator = 0
+    
+    -- Load Mini Sans font for cage targets
+    self.smallFont = gfx.font.new("fonts/Mini Sans")
 end
 
 function Kenken:showSizeSelection()
@@ -219,9 +222,16 @@ function Kenken:drawGame()
             -- Draw number if entered
             local value = self.playerGrid[x][y]
             if value > 0 then
+                -- Use system font for user input numbers
+                local systemFont = gfx.getSystemFont()
+                gfx.setFont(systemFont)
+                
                 local textX = screenX + self.cellSize / 2 - 2
                 local textY = screenY + self.cellSize / 2 - 8
                 gfx.drawText(tostring(value), textX, textY)
+                
+                -- Reset to default font
+                gfx.setFont(gfx.getFont())
             end
             
             gfx.setImageDrawMode(gfx.kDrawModeCopy)
@@ -286,7 +296,18 @@ function Kenken:drawCageTargets()
             local screenX = self.gridOffsetX + (firstCell[1] - 1) * self.cellSize + 3
             local screenY = self.gridOffsetY + (firstCell[2] - 1) * self.cellSize + 3
             
-            local targetText = tostring(cage.target)
+            local targetText
+            if cage.operation == "/" then
+                -- Format division targets without .0 decimal
+                if cage.target == math.floor(cage.target) then
+                    targetText = tostring(math.floor(cage.target))
+                else
+                    targetText = tostring(cage.target)
+                end
+            else
+                targetText = tostring(cage.target)
+            end
+            
             if cage.operation ~= "=" then
                 targetText = targetText .. cage.operation
             end
@@ -294,9 +315,8 @@ function Kenken:drawCageTargets()
             -- Check if this cage's first cell is selected for highlighting
             local isSelected = (firstCell[1] == self.selectedCell.x and firstCell[2] == self.selectedCell.y)
             
-            -- Draw target text in smaller font at top-left corner
-            local smallFont = gfx.getSystemFont(gfx.kFontVariant_Normal)
-            gfx.setFont(smallFont)
+            -- Draw target text in smaller font
+            gfx.setFont(self.smallFont)
             
             if isSelected then
                 gfx.setImageDrawMode(gfx.kDrawModeInverted)
@@ -308,6 +328,7 @@ function Kenken:drawCageTargets()
                 gfx.setImageDrawMode(gfx.kDrawModeCopy)
             end
             
+            -- Reset to default font
             gfx.setFont(gfx.getFont())
         end
     end
