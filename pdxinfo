@@ -1,0 +1,7 @@
+name=Kenken
+author=AI Assistant
+description=A Kenken puzzle game for Playdate
+bundleID=com.example.kenken
+version=1.0
+buildNumber=1
+imagePath=launcher
