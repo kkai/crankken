@@ -41,8 +41,9 @@ function CrankKen:showSizeSelection()
     local systemFont = gfx.getSystemFont()
     gfx.setFont(systemFont)
     
-    -- Draw title left aligned
+    -- Draw title left aligned with bold effect (draw twice with slight offset)
     gfx.drawText("CrankKen", 50, 20)
+    gfx.drawText("CrankKen", 51, 20)
     
     -- Use smaller font for "Select Size"
     local font = gfx.getFont()
