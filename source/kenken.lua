@@ -250,10 +250,23 @@ function Kenken:drawCageTargets()
                 targetText = targetText .. cage.operation
             end
             
+            -- Check if this cage's first cell is selected for highlighting
+            local isSelected = (firstCell[1] == self.selectedCell.x and firstCell[2] == self.selectedCell.y)
+            
             -- Draw target text in smaller font at top-left corner
             local smallFont = gfx.getFont(gfx.kFontVariant_Normal)
             gfx.setFont(smallFont)
+            
+            if isSelected then
+                gfx.setImageDrawMode(gfx.kDrawModeInverted)
+            end
+            
             gfx.drawText(targetText, screenX, screenY)
+            
+            if isSelected then
+                gfx.setImageDrawMode(gfx.kDrawModeCopy)
+            end
+            
             gfx.setFont(gfx.getFont())
         end
     end
