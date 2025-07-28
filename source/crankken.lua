@@ -6,14 +6,14 @@ import "puzzleGenerator"
 local pd <const> = playdate
 local gfx <const> = pd.graphics
 
-class("Kenken").extends()
+class("CrankKen").extends()
 
 -- Game states
 local STATE_SIZE_SELECTION = 1
 local STATE_PLAYING = 2
 local STATE_COMPLETED = 3
 
-function Kenken:init()
+function CrankKen:init()
     self.state = STATE_SIZE_SELECTION
     self.selectedSize = 4
     self.puzzle = nil
@@ -30,12 +30,12 @@ function Kenken:init()
     self.smallFont = gfx.font.new("fonts/Mini Sans")
 end
 
-function Kenken:showSizeSelection()
+function CrankKen:showSizeSelection()
     self.state = STATE_SIZE_SELECTION
     gfx.clear()
     
     local font = gfx.getFont()
-    local title = "Kenken - Select Size"
+    local title = "CrankKen - Select Size"
     local titleWidth = font:getTextWidth(title)
     gfx.drawText(title, (400 - titleWidth) / 2, 30)
     
@@ -55,7 +55,7 @@ function Kenken:showSizeSelection()
     gfx.drawText("⬆⬇ Select Size", 200, 200)
 end
 
-function Kenken:startGame(size)
+function CrankKen:startGame(size)
     self.state = STATE_PLAYING
     self.puzzle = self:generatePuzzle(size)
     self.playerGrid = {}
@@ -77,11 +77,11 @@ function Kenken:startGame(size)
     self.selectedCell = {x = 1, y = 1}
 end
 
-function Kenken:generatePuzzle(size)
+function CrankKen:generatePuzzle(size)
     return self.puzzleGenerator:generatePuzzle(size)
 end
 
-function Kenken:update()
+function CrankKen:update()
     if self.state == STATE_SIZE_SELECTION then
         self:updateSizeSelection()
     elseif self.state == STATE_PLAYING then
@@ -91,7 +91,7 @@ function Kenken:update()
     end
 end
 
-function Kenken:updateSizeSelection()
+function CrankKen:updateSizeSelection()
     if pd.buttonJustPressed(pd.kButtonUp) then
         local sizes = {3, 4, 5, 6}
         for i, size in ipairs(sizes) do
@@ -116,7 +116,7 @@ function Kenken:updateSizeSelection()
     end
 end
 
-function Kenken:updateGame()
+function CrankKen:updateGame()
     local moved = false
     
     if pd.buttonJustPressed(pd.kButtonUp) and self.selectedCell.y > 1 then
@@ -200,7 +200,7 @@ function Kenken:updateGame()
     end
 end
 
-function Kenken:drawGame()
+function CrankKen:drawGame()
     gfx.clear()
     
     
@@ -244,7 +244,7 @@ function Kenken:drawGame()
     
 end
 
-function Kenken:drawCageBoundaries()
+function CrankKen:drawCageBoundaries()
     gfx.setLineWidth(3)
     
     for _, cage in ipairs(self.puzzle.cages) do
@@ -288,7 +288,7 @@ function Kenken:drawCageBoundaries()
     gfx.setLineWidth(1)
 end
 
-function Kenken:drawCageTargets()
+function CrankKen:drawCageTargets()
     -- Draw cage targets in the top-left corner of the first cell
     for _, cage in ipairs(self.puzzle.cages) do
         if #cage.cells > 0 then
@@ -334,7 +334,7 @@ function Kenken:drawCageTargets()
     end
 end
 
-function Kenken:checkCompletion()
+function CrankKen:checkCompletion()
     -- Check if all cells are filled
     for x = 1, self.puzzle.size do
         for y = 1, self.puzzle.size do
@@ -370,7 +370,7 @@ function Kenken:checkCompletion()
     return true
 end
 
-function Kenken:checkCage(cage)
+function CrankKen:checkCage(cage)
     local values = {}
     for _, cell in ipairs(cage.cells) do
         table.insert(values, self.playerGrid[cell[1]][cell[2]])
@@ -403,13 +403,13 @@ function Kenken:checkCage(cage)
     return false
 end
 
-function Kenken:updateCompleted()
+function CrankKen:updateCompleted()
     if pd.buttonJustPressed(pd.kButtonA) then
         self:showSizeSelection()
     end
 end
 
-function Kenken:drawCompleted()
+function CrankKen:drawCompleted()
     gfx.clear()
     
     -- Use system font for completion screen

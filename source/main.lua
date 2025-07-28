@@ -3,16 +3,16 @@ import "CoreLibs/sprites"
 import "CoreLibs/timer"
 import "CoreLibs/ui"
 
-import "kenken"
+import "crankken"
 
 local pd <const> = playdate
 local gfx <const> = pd.graphics
 
-local kenkenGame
+local crankkenGame
 
 function pd.update()
-    if kenkenGame then
-        kenkenGame:update()
+    if crankkenGame then
+        crankkenGame:update()
     end
     
     pd.timer.updateTimers()
@@ -24,5 +24,5 @@ function pd.gameWillTerminate()
 end
 
 -- Initialize the game
-kenkenGame = Kenken()
-kenkenGame:showSizeSelection()
+crankkenGame = CrankKen()
+crankkenGame:showSizeSelection()
