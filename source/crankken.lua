@@ -147,8 +147,17 @@ function CrankKen:start_game(size)
     self.quit_button_selected = false
     
     -- Calculate dynamic cell size to fit on screen (with margins for UI elements)
-    local max_grid_width = 360  -- Leave room for timer and quit button
-    local max_grid_height = 200  -- Leave room for timer at top
+    local max_grid_width, max_grid_height
+    
+    if size == 9 then
+        -- Use more of the screen for 9x9 puzzles
+        max_grid_width = 390   -- Use even more width for 9x9
+        max_grid_height = 230  -- Use even more height for 9x9
+    else
+        max_grid_width = 360   -- Leave room for timer and quit button
+        max_grid_height = 200  -- Leave room for timer at top
+    end
+    
     local max_cell_size_for_width = math.floor(max_grid_width / size)
     local max_cell_size_for_height = math.floor(max_grid_height / size)
     self.cell_size = math.min(max_cell_size_for_width, max_cell_size_for_height, 33)  -- Cap at 33 for small grids
