@@ -19,11 +19,11 @@ local STATE_COMPLETED = 3
 function CrankKen:init()
     -- Initialize game state
     self.state = STATE_SIZE_SELECTION
-    self.selected_size = 4
+    self.selected_size = 5  -- Start with 5x5 as middle option
     self.puzzle = nil
     self.player_grid = nil
     self.selected_cell = {x = 1, y = 1}
-    self.cell_size = 33
+    self.cell_size = 33  -- Default value, will be recalculated in start_game
     self.quit_button_selected = false
     
     -- Timer tracking
@@ -145,6 +145,13 @@ function CrankKen:start_game(size)
     
     -- Reset quit button selection
     self.quit_button_selected = false
+    
+    -- Calculate dynamic cell size to fit on screen (with margins for UI elements)
+    local max_grid_width = 360  -- Leave room for timer and quit button
+    local max_grid_height = 200  -- Leave room for timer at top
+    local max_cell_size_for_width = math.floor(max_grid_width / size)
+    local max_cell_size_for_height = math.floor(max_grid_height / size)
+    self.cell_size = math.min(max_cell_size_for_width, max_cell_size_for_height, 33)  -- Cap at 33 for small grids
     
     -- Calculate centered grid position
     local grid_width = size * self.cell_size

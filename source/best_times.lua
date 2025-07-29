@@ -17,19 +17,22 @@ function BestTimes:init()
         [3] = nil,  -- 3x3 best time in milliseconds
         [4] = nil,  -- 4x4 best time in milliseconds  
         [5] = nil,  -- 5x5 best time in milliseconds
-        [6] = nil   -- 6x6 best time in milliseconds
+        [6] = nil,  -- 6x6 best time in milliseconds
+        [7] = nil,  -- 7x7 best time in milliseconds
+        [8] = nil,  -- 8x8 best time in milliseconds
+        [9] = nil   -- 9x9 best time in milliseconds
     }
 end
 
 --- Get the best time for a specific puzzle size
--- @param size number: The puzzle size (3, 4, 5, or 6)
+-- @param size number: The puzzle size (3, 4, 5, 6, 7, 8, or 9)
 -- @return number|nil: Best time in milliseconds, or nil if no record exists
 function BestTimes:get_best_time(size)
     return self.times[size]
 end
 
 --- Update best time if the new time is better
--- @param size number: The puzzle size (3, 4, 5, or 6)
+-- @param size number: The puzzle size (3, 4, 5, 6, 7, 8, or 9)
 -- @param completion_time number: Completion time in milliseconds
 -- @return boolean: true if new record was set, false otherwise
 function BestTimes:update_best_time(size, completion_time)

@@ -6,7 +6,7 @@ local pd <const> = playdate
 class("GameInput").extends()
 
 -- Constants
-local SIZES = {3, 4, 5, 6}
+local SIZES = {3, 4, 5, 6, 7, 8, 9}
 local QUARTER_ROTATION_DEGREES = 90
 local HALF_ROTATION_DEGREES = 180
 local FULL_ROTATION_DEGREES = 360

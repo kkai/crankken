@@ -7,7 +7,7 @@ local gfx <const> = pd.graphics
 class("GameUI").extends()
 
 -- Constants
-local GRID_SIZES = {3, 4, 5, 6}
+local GRID_SIZES = {3, 4, 5, 6, 7, 8, 9}
 local TITLE_BOLD_OFFSET = 1
 local BEST_TIME_OFFSET = 15
 
@@ -28,7 +28,7 @@ function GameUI:draw_size_selection(selected_size, best_times)
     self:_draw_size_options(selected_size)
     
     -- Draw start game instruction
-    gfx.drawText("Ⓐ to start a game", 50, 200)
+    gfx.drawText("Ⓐ to start a game", 50, 210)
     
     -- Draw grid preview on the right
     self:_draw_grid_preview(selected_size, best_times)
@@ -45,22 +45,17 @@ function GameUI:_draw_title()
     -- Bold effect: draw twice with slight offset
     gfx.drawText("CrankKen", 50, 20)
     gfx.drawText("CrankKen", 50 + TITLE_BOLD_OFFSET, 20)
-    
-    -- Subtitle
-    local font = gfx.getFont()
-    gfx.setFont(font)
-    gfx.drawText("Select Size", 50, 50)
 end
 
 --- Draw size selection options (private method)
 -- @param selected_size number: Currently selected size
 function GameUI:_draw_size_options(selected_size)
     for i, size in ipairs(GRID_SIZES) do
-        local y = 80 + (i - 1) * 30
+        local y = 50 + (i - 1) * 22  -- Moved up to start right under the title
         local text = size .. "x" .. size
         
         if size == selected_size then
-            gfx.fillRect(50, y - 5, 100, 25)
+            gfx.fillRect(50, y - 3, 100, 20)  -- Smaller highlight box
             gfx.setImageDrawMode(gfx.kDrawModeInverted)
         end
         
@@ -74,14 +69,14 @@ function GameUI:_draw_control_instructions()
     local system_font = gfx.getSystemFont()
     gfx.setFont(system_font)
     
-    local control_text = "⬆⬇ Select Size"
+    local control_text = "⬆⬇ select size"
     local text_width = system_font:getTextWidth(control_text)
     local dialog_end_x = 150
     local screen_end_x = 400
     local available_width = screen_end_x - dialog_end_x
     local center_x = dialog_end_x + available_width / 2
     
-    gfx.drawText(control_text, center_x - text_width / 2, 200)
+    gfx.drawText(control_text, center_x - text_width / 2, 210)
     
     -- Reset to default font
     gfx.setFont(gfx.getFont())
