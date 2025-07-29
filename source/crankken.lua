@@ -1,7 +1,10 @@
 import "CoreLibs/graphics"
 import "CoreLibs/sprites"
 import "CoreLibs/ui"
-import "puzzleGenerator"
+import "puzzle_generator"
+import "best_times"
+import "game_input"
+import "game_ui"
 
 local pd <const> = playdate
 local gfx <const> = pd.graphics
@@ -14,554 +17,179 @@ local STATE_PLAYING = 2
 local STATE_COMPLETED = 3
 
 function CrankKen:init()
+    -- Initialize game state
     self.state = STATE_SIZE_SELECTION
-    self.selectedSize = 4
+    self.selected_size = 4
     self.puzzle = nil
-    self.playerGrid = nil
-    self.selectedCell = {x = 1, y = 1}
-    self.cellSize = 33
-    self.puzzleGenerator = PuzzleGenerator()
+    self.player_grid = nil
+    self.selected_cell = {x = 1, y = 1}
+    self.cell_size = 33
+    self.quit_button_selected = false
     
-    -- Crank tracking variables
-    self.lastCrankPosition = pd.getCrankPosition()
-    self.crankAccumulator = 0
+    -- Timer tracking
+    self.puzzle_start_time = 0
+    self.completion_time = 0
     
-    -- Crank tracking for size selection
-    self.sizeCrankAccumulator = 0
+    -- Initialize modules
+    self.puzzle_generator = PuzzleGenerator()
+    self.best_times = BestTimes()
+    self.input = GameInput()
+    self.ui = GameUI()
     
-    -- Timer tracking variables
-    self.puzzleStartTime = 0
-    self.completionTime = 0
-    
-    -- Quit button selection state
-    self.quitButtonSelected = false
-    
-    -- Load Mini Sans font for cage targets
-    self.smallFont = gfx.font.new("fonts/Mini Sans")
-    
-    -- Load best times from datastore
-    self.bestTimes = pd.datastore.read("besttimes") or {
-        [3] = nil,  -- 3x3 best time in milliseconds
-        [4] = nil,  -- 4x4 best time in milliseconds
-        [5] = nil,  -- 5x5 best time in milliseconds
-        [6] = nil   -- 6x6 best time in milliseconds
-    }
-end
-
-function CrankKen:showSizeSelection()
-    self.state = STATE_SIZE_SELECTION
-    gfx.clear()
-    
-    -- Use system font for bigger title
-    local systemFont = gfx.getSystemFont()
-    gfx.setFont(systemFont)
-    
-    -- Draw title left aligned with bold effect (draw twice with slight offset)
-    gfx.drawText("CrankKen", 50, 20)
-    gfx.drawText("CrankKen", 51, 20)
-    
-    -- Use smaller font for "Select Size"
-    local font = gfx.getFont()
-    gfx.setFont(font)
-    gfx.drawText("select size", 50, 50)
-    
-    local sizes = {3, 4, 5, 6}
-    for i, size in ipairs(sizes) do
-        local y = 80 + (i - 1) * 30
-        local text = size .. "x" .. size
-        if size == self.selectedSize then
-            gfx.fillRect(50, y - 5, 100, 25)
-            gfx.setImageDrawMode(gfx.kDrawModeInverted)
-        end
-        gfx.drawText(text, 60, y)
-        gfx.setImageDrawMode(gfx.kDrawModeCopy)
-    end
-    
-    gfx.drawText("Ⓐ to start a game", 50, 200)
-    
-    -- Draw grid preview on the right
-    self:drawGridPreview(self.selectedSize)
-    
-    -- Draw control instructions centered under the preview using system font
-    local systemFont = gfx.getSystemFont()
-    gfx.setFont(systemFont)
-    
-    local controlText = "⬆⬇ select size"
-    local textWidth = systemFont:getTextWidth(controlText)
-    local dialogEndX = 150  -- Same as in drawGridPreview
-    local screenEndX = 400
-    local availableWidth = screenEndX - dialogEndX
-    local centerX = dialogEndX + availableWidth / 2
-    gfx.drawText(controlText, centerX - textWidth / 2, 200)
-    
-    -- Reset to default font
-    gfx.setFont(gfx.getFont())
-end
-
-function CrankKen:drawGridPreview(size)
-    -- Calculate cell size to fit within screen bounds
-    -- Playdate screen is 400x240, leave margin for 6x6 case
-    local maxGridSize = 120  -- Maximum pixels for the grid
-    local previewCellSize = math.floor(maxGridSize / size)
-    local gridPixelSize = size * previewCellSize
-    
-    -- Center between selection dialog and end of screen
-    local dialogEndX = 150  -- Approximate end of the selection dialog
-    local screenEndX = 400  -- Screen width
-    local availableWidth = screenEndX - dialogEndX
-    local previewStartX = dialogEndX + (availableWidth - gridPixelSize) / 2  -- Center in available space
-    local previewStartY = (240 - gridPixelSize) / 2        -- Center vertically on screen
-    
-    -- Draw grid outline
-    gfx.setLineWidth(1)
-    for x = 0, size do
-        local screenX = previewStartX + x * previewCellSize
-        gfx.drawLine(screenX, previewStartY, screenX, previewStartY + size * previewCellSize)
-    end
-    
-    for y = 0, size do
-        local screenY = previewStartY + y * previewCellSize
-        gfx.drawLine(previewStartX, screenY, previewStartX + size * previewCellSize, screenY)
-    end
-    
-    -- Display best time above the grid using Mini Sans font
-    gfx.setFont(self.smallFont)
-    
-    local timeText
-    if self.bestTimes[size] then
-        -- Format best time as MM:SS
-        local bestTimeSeconds = math.floor(self.bestTimes[size] / 1000)
-        local minutes = math.floor(bestTimeSeconds / 60)
-        local seconds = bestTimeSeconds % 60
-        timeText = string.format("%02d:%02d", minutes, seconds)
-    else
-        timeText = "--:--"
-    end
-    
-    local bestTimeText = "Best Time: " .. timeText
-    local bestTimeX = previewStartX  -- Left align with the grid
-    local bestTimeY = previewStartY - 15  -- Position above the grid
-    
-    gfx.drawText(bestTimeText, bestTimeX, bestTimeY)
-    
-    -- Reset font
-    gfx.setFont(gfx.getFont())
-end
-
-function CrankKen:startGame(size)
-    self.state = STATE_PLAYING
-    self.puzzle = self:generatePuzzle(size)
-    self.playerGrid = {}
-    
-    -- Timer will be started when puzzle is first drawn
-    self.puzzleStartTime = 0
-    
-    -- Reset quit button selection
-    self.quitButtonSelected = false
-    
-    -- Calculate centered grid position
-    local gridWidth = size * self.cellSize
-    local gridHeight = size * self.cellSize
-    self.gridOffsetX = (400 - gridWidth) / 2
-    self.gridOffsetY = (240 - gridHeight) / 2
-    
-    -- Initialize empty player grid
-    for x = 1, size do
-        self.playerGrid[x] = {}
-        for y = 1, size do
-            self.playerGrid[x][y] = 0
-        end
-    end
-    
-    self.selectedCell = {x = 1, y = 1}
-end
-
-function CrankKen:generatePuzzle(size)
-    return self.puzzleGenerator:generatePuzzle(size)
+    -- Grid positioning (calculated in start_game)
+    self.grid_offset_x = 0
+    self.grid_offset_y = 0
 end
 
 function CrankKen:update()
     if self.state == STATE_SIZE_SELECTION then
-        self:updateSizeSelection()
+        self:update_size_selection()
     elseif self.state == STATE_PLAYING then
-        self:updateGame()
+        self:update_game()
     elseif self.state == STATE_COMPLETED then
-        self:updateCompleted()
+        self:update_completed()
     end
 end
 
-function CrankKen:updateSizeSelection()
-    local sizeChanged = false
-    local sizes = {3, 4, 5, 6}
+function CrankKen:update_size_selection()
+    local new_size, size_changed = self.input:handle_size_selection(self.selected_size)
     
-    -- Handle button input
-    if pd.buttonJustPressed(pd.kButtonUp) then
-        for i, size in ipairs(sizes) do
-            if size == self.selectedSize and i > 1 then
-                self.selectedSize = sizes[i - 1]
-                sizeChanged = true
-                break
-            end
-        end
-    elseif pd.buttonJustPressed(pd.kButtonDown) then
-        for i, size in ipairs(sizes) do
-            if size == self.selectedSize and i < #sizes then
-                self.selectedSize = sizes[i + 1]
-                sizeChanged = true
-                break
-            end
-        end
-    end
-    
-    -- Handle crank input for size selection
-    local currentCrankPosition = pd.getCrankPosition()
-    local crankDelta = currentCrankPosition - self.lastCrankPosition
-    
-    -- Handle wraparound at 0/360 degrees
-    if crankDelta > 180 then
-        crankDelta = crankDelta - 360
-    elseif crankDelta < -180 then
-        crankDelta = crankDelta + 360
-    end
-    
-    self.sizeCrankAccumulator = self.sizeCrankAccumulator + crankDelta
-    self.lastCrankPosition = currentCrankPosition
-    
-    -- Trigger size change on quarter rotation (90 degrees)
-    if math.abs(self.sizeCrankAccumulator) >= 90 then
-        local currentIndex = 1
-        for i, size in ipairs(sizes) do
-            if size == self.selectedSize then
-                currentIndex = i
-                break
-            end
-        end
-        
-        if self.sizeCrankAccumulator >= 90 then
-            -- Clockwise rotation - next size
-            if currentIndex < #sizes then
-                self.selectedSize = sizes[currentIndex + 1]
-                sizeChanged = true
-            end
-            self.sizeCrankAccumulator = self.sizeCrankAccumulator - 90
-        elseif self.sizeCrankAccumulator <= -90 then
-            -- Counter-clockwise rotation - previous size
-            if currentIndex > 1 then
-                self.selectedSize = sizes[currentIndex - 1]
-                sizeChanged = true
-            end
-            self.sizeCrankAccumulator = self.sizeCrankAccumulator + 90
-        end
-    end
-    
-    if sizeChanged then
-        self:showSizeSelection()
+    if size_changed then
+        self.selected_size = new_size
+        self:show_size_selection()
     end
     
     if pd.buttonJustPressed(pd.kButtonA) then
-        self:startGame(self.selectedSize)
-        self:drawGame()
+        self:start_game(self.selected_size)
+        self:draw_game()
     end
 end
 
-function CrankKen:updateGame()
-    local moved = false
+function CrankKen:update_game()
+    local new_cell, new_quit_selected, moved, action = self.input:handle_game_input(
+        self.selected_cell, 
+        self.puzzle.size, 
+        self.quit_button_selected
+    )
     
-    -- Handle navigation between grid and quit button
-    if pd.buttonJustPressed(pd.kButtonUp) then
-        if self.quitButtonSelected then
-            -- Move from quit button to bottom row of grid
-            self.quitButtonSelected = false
-            self.selectedCell.y = self.puzzle.size
-            moved = true
-        elseif self.selectedCell.y > 1 then
-            self.selectedCell.y -= 1
-            moved = true
-        end
-    elseif pd.buttonJustPressed(pd.kButtonDown) then
-        if not self.quitButtonSelected and self.selectedCell.y < self.puzzle.size then
-            self.selectedCell.y += 1
-            moved = true
-        elseif not self.quitButtonSelected and self.selectedCell.y == self.puzzle.size then
-            -- Move from bottom row to quit button
-            self.quitButtonSelected = true
-            moved = true
-        end
-    elseif pd.buttonJustPressed(pd.kButtonLeft) and not self.quitButtonSelected and self.selectedCell.x > 1 then
-        self.selectedCell.x -= 1
-        moved = true
-    elseif pd.buttonJustPressed(pd.kButtonRight) and not self.quitButtonSelected and self.selectedCell.x < self.puzzle.size then
-        self.selectedCell.x += 1
-        moved = true
-    end
+    -- Update game state
+    self.selected_cell = new_cell
+    self.quit_button_selected = new_quit_selected
     
-    -- Handle A button press
-    if pd.buttonJustPressed(pd.kButtonA) then
-        if self.quitButtonSelected then
-            -- Return to start screen
-            self:showSizeSelection()
+    -- Handle actions
+    if action then
+        if action == "quit" then
+            self:show_size_selection()
             return
-        else
-            -- Handle number input (cycle through 0,1,2,...,size)
-            local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
-            currentValue = (currentValue + 1) % (self.puzzle.size + 1)
-            self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
-            moved = true
-        end
-    elseif pd.buttonJustPressed(pd.kButtonB) and not self.quitButtonSelected then
-        local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
-        currentValue = currentValue - 1
-        if currentValue < 0 then
-            currentValue = self.puzzle.size
-        end
-        self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
-        moved = true
-    end
-    
-    -- Handle crank input for number cycling (only when not on quit button)
-    if not self.quitButtonSelected then
-        local currentCrankPosition = pd.getCrankPosition()
-        local crankDelta = currentCrankPosition - self.lastCrankPosition
-        
-        -- Handle wraparound at 0/360 degrees
-        if crankDelta > 180 then
-            crankDelta = crankDelta - 360
-        elseif crankDelta < -180 then
-            crankDelta = crankDelta + 360
-        end
-        
-        self.crankAccumulator = self.crankAccumulator + crankDelta
-        self.lastCrankPosition = currentCrankPosition
-        
-        -- Trigger number change on half rotation (180 degrees)
-        if math.abs(self.crankAccumulator) >= 180 then
-            local currentValue = self.playerGrid[self.selectedCell.x][self.selectedCell.y]
-            
-            if self.crankAccumulator >= 180 then
-                -- Clockwise rotation - increment number
-                currentValue = (currentValue + 1) % (self.puzzle.size + 1)
-                self.crankAccumulator = self.crankAccumulator - 180
-            elseif self.crankAccumulator <= -180 then
-                -- Counter-clockwise rotation - decrement number
-                currentValue = currentValue - 1
-                if currentValue < 0 then
-                    currentValue = self.puzzle.size
-                end
-                self.crankAccumulator = self.crankAccumulator + 180
-            end
-            
-            self.playerGrid[self.selectedCell.x][self.selectedCell.y] = currentValue
-            moved = true
-        end
-        
-        -- Clear cell with menu button
-        if pd.buttonJustPressed(pd.kButtonMenu) then
-            self.playerGrid[self.selectedCell.x][self.selectedCell.y] = 0
+        elseif action == "increment" or action == "decrement" or action == "clear" then
+            self:handle_cell_action(action)
             moved = true
         end
     end
-    
     
     -- Always redraw to keep timer updated
-    self:drawGame()
+    self:draw_game()
     
-    if moved and self:checkCompletion() then
-        -- Calculate completion time
-        self.completionTime = pd.getCurrentTimeMilliseconds() - self.puzzleStartTime
-        
-        -- Update best time if this is a new record
-        local currentSize = self.puzzle.size
-        if not self.bestTimes[currentSize] or self.completionTime < self.bestTimes[currentSize] then
-            self.bestTimes[currentSize] = self.completionTime
-            -- Save updated best times to datastore
-            pd.datastore.write(self.bestTimes, "besttimes")
-        end
-        
-        self.state = STATE_COMPLETED
-        self:drawGame()  -- Redraw the game first
-        self:drawCompletionPopup()  -- Then draw popup overlay
+    if moved and self:check_completion() then
+        self:handle_puzzle_completion()
     end
 end
 
-function CrankKen:drawGame()
-    gfx.clear()
+function CrankKen:handle_cell_action(action)
+    local current_value = self.player_grid[self.selected_cell.x][self.selected_cell.y]
     
+    if action == "increment" then
+        current_value = (current_value + 1) % (self.puzzle.size + 1)
+    elseif action == "decrement" then
+        current_value = current_value - 1
+        if current_value < 0 then
+            current_value = self.puzzle.size
+        end
+    elseif action == "clear" then
+        current_value = 0
+    end
+    
+    self.player_grid[self.selected_cell.x][self.selected_cell.y] = current_value
+end
+
+function CrankKen:handle_puzzle_completion()
+    -- Calculate completion time
+    self.completion_time = pd.getCurrentTimeMilliseconds() - self.puzzle_start_time
+    
+    -- Update best time if this is a new record
+    self.best_times:update_best_time(self.puzzle.size, self.completion_time)
+    
+    self.state = STATE_COMPLETED
+    self:draw_game()  -- Redraw the game first
+    self.ui:draw_completion_popup(self.completion_time)  -- Then draw popup overlay
+end
+
+function CrankKen:update_completed()
+    if pd.buttonJustPressed(pd.kButtonA) then
+        self:show_size_selection()
+    end
+end
+
+function CrankKen:show_size_selection()
+    self.state = STATE_SIZE_SELECTION
+    self.ui:draw_size_selection(self.selected_size, self.best_times)
+end
+
+function CrankKen:start_game(size)
+    self.state = STATE_PLAYING
+    self.puzzle = self:generate_puzzle(size)
+    self.player_grid = {}
+    
+    -- Timer will be started when puzzle is first drawn
+    self.puzzle_start_time = 0
+    
+    -- Reset quit button selection
+    self.quit_button_selected = false
+    
+    -- Calculate centered grid position
+    local grid_width = size * self.cell_size
+    local grid_height = size * self.cell_size
+    self.grid_offset_x = (400 - grid_width) / 2
+    self.grid_offset_y = (240 - grid_height) / 2
+    
+    -- Initialize empty player grid
+    for x = 1, size do
+        self.player_grid[x] = {}
+        for y = 1, size do
+            self.player_grid[x][y] = 0
+        end
+    end
+    
+    self.selected_cell = {x = 1, y = 1}
+end
+
+function CrankKen:generate_puzzle(size)
+    return self.puzzle_generator:generate_puzzle(size)
+end
+
+function CrankKen:draw_game()
     -- Start timer on first draw
-    if self.puzzleStartTime == 0 then
-        self.puzzleStartTime = pd.getCurrentTimeMilliseconds()
+    if self.puzzle_start_time == 0 then
+        self.puzzle_start_time = pd.getCurrentTimeMilliseconds()
     end
     
-    -- Draw elapsed time in upper right corner
-    if self.puzzleStartTime > 0 then
-        local elapsedMs = pd.getCurrentTimeMilliseconds() - self.puzzleStartTime
-        local elapsedSeconds = math.floor(elapsedMs / 1000)
-        local minutes = math.floor(elapsedSeconds / 60)
-        local seconds = elapsedSeconds % 60
-        local timeText = string.format("%02d:%02d", minutes, seconds)
-        
-        -- Use system font for timer consistency
-        local systemFont = gfx.getSystemFont()
-        gfx.setFont(systemFont)
-        local textWidth = systemFont:getTextWidth(timeText)
-        gfx.drawText(timeText, 400 - textWidth - 10, 10)
-        
-        -- Reset to default font for game drawing
-        gfx.setFont(gfx.getFont())
-    end
-    
-    -- Draw quit button in bottom right corner
-    local quitText = "quit"
-    local font = gfx.getFont()
-    local quitWidth = font:getTextWidth(quitText)
-    local quitX = 400 - quitWidth - 10
-    local quitY = 240 - 20
-    
-    if self.quitButtonSelected then
-        -- Highlight quit button when selected (cover whole button)
-        local font = gfx.getFont()
-        local textHeight = font:getHeight()
-        gfx.fillRect(quitX - 2, quitY - 2, quitWidth + 4, textHeight + 4)
-        gfx.setImageDrawMode(gfx.kDrawModeInverted)
-    end
-    
-    gfx.drawText(quitText, quitX, quitY)
-    gfx.setImageDrawMode(gfx.kDrawModeCopy)
-    
-    -- First pass: Draw cage boundaries and backgrounds
-    self:drawCageBoundaries()
-    
-    -- Second pass: Draw grid and numbers
-    for x = 1, self.puzzle.size do
-        for y = 1, self.puzzle.size do
-            local screenX = self.gridOffsetX + (x - 1) * self.cellSize
-            local screenY = self.gridOffsetY + (y - 1) * self.cellSize
-            
-            -- Highlight selected cell (only when not on quit button)
-            if x == self.selectedCell.x and y == self.selectedCell.y and not self.quitButtonSelected then
-                gfx.fillRect(screenX + 2, screenY + 2, self.cellSize - 4, self.cellSize - 4)
-                gfx.setImageDrawMode(gfx.kDrawModeInverted)
-            end
-            
-            -- Draw number if entered
-            local value = self.playerGrid[x][y]
-            if value > 0 then
-                -- Use system font for user input numbers
-                local systemFont = gfx.getSystemFont()
-                gfx.setFont(systemFont)
-                
-                local textX = screenX + self.cellSize / 2 - 2
-                local textY = screenY + self.cellSize / 2 - 8
-                gfx.drawText(tostring(value), textX, textY)
-                
-                -- Reset to default font
-                gfx.setFont(gfx.getFont())
-            end
-            
-            gfx.setImageDrawMode(gfx.kDrawModeCopy)
-        end
-    end
-    
-    -- Third pass: Draw cage targets
-    self:drawCageTargets()
-    
-    
+    self.ui:draw_game(
+        self.puzzle,
+        self.player_grid,
+        self.selected_cell,
+        self.quit_button_selected,
+        self.puzzle_start_time,
+        self.grid_offset_x,
+        self.grid_offset_y,
+        self.cell_size
+    )
 end
 
-function CrankKen:drawCageBoundaries()
-    gfx.setLineWidth(3)
-    
-    for _, cage in ipairs(self.puzzle.cages) do
-        if #cage.cells > 0 then
-            -- Create a set for quick lookup of cells in this cage
-            local cellSet = {}
-            for _, cell in ipairs(cage.cells) do
-                cellSet[cell[1] .. "," .. cell[2]] = true
-            end
-            
-            -- For each cell in the cage, draw thick borders where needed
-            for _, cell in ipairs(cage.cells) do
-                local x, y = cell[1], cell[2]
-                local screenX = self.gridOffsetX + (x - 1) * self.cellSize
-                local screenY = self.gridOffsetY + (y - 1) * self.cellSize
-                
-                -- Check each edge and draw thick border if not connected to same cage
-                -- Top edge
-                if y == 1 or not cellSet[(x) .. "," .. (y-1)] then
-                    gfx.drawLine(screenX, screenY, screenX + self.cellSize, screenY)
-                end
-                
-                -- Bottom edge
-                if y == self.puzzle.size or not cellSet[(x) .. "," .. (y+1)] then
-                    gfx.drawLine(screenX, screenY + self.cellSize, screenX + self.cellSize, screenY + self.cellSize)
-                end
-                
-                -- Left edge
-                if x == 1 or not cellSet[(x-1) .. "," .. (y)] then
-                    gfx.drawLine(screenX, screenY, screenX, screenY + self.cellSize)
-                end
-                
-                -- Right edge
-                if x == self.puzzle.size or not cellSet[(x+1) .. "," .. (y)] then
-                    gfx.drawLine(screenX + self.cellSize, screenY, screenX + self.cellSize, screenY + self.cellSize)
-                end
-            end
-        end
-    end
-    
-    gfx.setLineWidth(1)
-end
-
-function CrankKen:drawCageTargets()
-    -- Draw cage targets in the top-left corner of the first cell
-    for _, cage in ipairs(self.puzzle.cages) do
-        if #cage.cells > 0 then
-            local firstCell = cage.cells[1]
-            local screenX = self.gridOffsetX + (firstCell[1] - 1) * self.cellSize + 3
-            local screenY = self.gridOffsetY + (firstCell[2] - 1) * self.cellSize + 3
-            
-            local targetText
-            if cage.operation == "/" then
-                -- Format division targets without .0 decimal
-                if cage.target == math.floor(cage.target) then
-                    targetText = tostring(math.floor(cage.target))
-                else
-                    targetText = tostring(cage.target)
-                end
-            else
-                targetText = tostring(cage.target)
-            end
-            
-            if cage.operation ~= "=" then
-                targetText = targetText .. cage.operation
-            end
-            
-            -- Check if this cage's first cell is selected for highlighting
-            local isSelected = (firstCell[1] == self.selectedCell.x and firstCell[2] == self.selectedCell.y)
-            
-            -- Draw target text in smaller font
-            gfx.setFont(self.smallFont)
-            
-            if isSelected then
-                gfx.setImageDrawMode(gfx.kDrawModeInverted)
-            end
-            
-            gfx.drawText(targetText, screenX, screenY)
-            
-            if isSelected then
-                gfx.setImageDrawMode(gfx.kDrawModeCopy)
-            end
-            
-            -- Reset to default font
-            gfx.setFont(gfx.getFont())
-        end
-    end
-end
-
-function CrankKen:checkCompletion()
+function CrankKen:check_completion()
     -- Check if all cells are filled
     for x = 1, self.puzzle.size do
         for y = 1, self.puzzle.size do
-            if self.playerGrid[x][y] == 0 then
+            if self.player_grid[x][y] == 0 then
                 return false
             end
         end
@@ -569,23 +197,23 @@ function CrankKen:checkCompletion()
     
     -- Check row and column constraints
     for i = 1, self.puzzle.size do
-        local rowValues = {}
-        local colValues = {}
+        local row_values = {}
+        local col_values = {}
         for j = 1, self.puzzle.size do
-            local rowVal = self.playerGrid[i][j]
-            local colVal = self.playerGrid[j][i]
+            local row_val = self.player_grid[i][j]
+            local col_val = self.player_grid[j][i]
             
-            if rowValues[rowVal] or colValues[colVal] then
+            if row_values[row_val] or col_values[col_val] then
                 return false
             end
-            rowValues[rowVal] = true
-            colValues[colVal] = true
+            row_values[row_val] = true
+            col_values[col_val] = true
         end
     end
     
     -- Check cage constraints
     for _, cage in ipairs(self.puzzle.cages) do
-        if not self:checkCage(cage) then
+        if not self:check_cage(cage) then
             return false
         end
     end
@@ -593,10 +221,10 @@ function CrankKen:checkCompletion()
     return true
 end
 
-function CrankKen:checkCage(cage)
+function CrankKen:check_cage(cage)
     local values = {}
     for _, cell in ipairs(cage.cells) do
-        table.insert(values, self.playerGrid[cell[1]][cell[2]])
+        table.insert(values, self.player_grid[cell[1]][cell[2]])
     end
     
     if cage.operation == "=" then
@@ -624,64 +252,4 @@ function CrankKen:checkCage(cage)
     end
     
     return false
-end
-
-function CrankKen:updateCompleted()
-    if pd.buttonJustPressed(pd.kButtonA) then
-        self:showSizeSelection()
-    end
-end
-
-function CrankKen:drawCompletionPopup()
-    -- Draw popup box (smaller size)
-    local popupWidth = 200
-    local popupHeight = 80
-    local popupX = (400 - popupWidth) / 2
-    local popupY = (240 - popupHeight) / 2
-    
-    -- Draw popup background
-    gfx.setColor(gfx.kColorWhite)
-    gfx.fillRect(popupX, popupY, popupWidth, popupHeight)
-    gfx.setColor(gfx.kColorBlack)
-    gfx.drawRect(popupX, popupY, popupWidth, popupHeight)
-    
-    -- Format completion time
-    local elapsedSeconds = math.floor(self.completionTime / 1000)
-    local minutes = math.floor(elapsedSeconds / 60)
-    local seconds = elapsedSeconds % 60
-    local timeText = string.format("%02d:%02d", minutes, seconds)
-    
-    -- Use system font for all text in compact popup
-    local systemFont = gfx.getSystemFont()
-    gfx.setFont(systemFont)
-    
-    local title = "Completed!"
-    local titleWidth = systemFont:getTextWidth(title)
-    gfx.drawText(title, popupX + (popupWidth - titleWidth) / 2, popupY + 10)
-    
-    local timeLabel = "Time: " .. timeText
-    local timeLabelWidth = systemFont:getTextWidth(timeLabel)
-    gfx.drawText(timeLabel, popupX + (popupWidth - timeLabelWidth) / 2, popupY + 30)
-    
-    local buttonText = "Ⓐ New Game"
-    local buttonTextWidth = systemFont:getTextWidth(buttonText)
-    gfx.drawText(buttonText, popupX + (popupWidth - buttonTextWidth) / 2, popupY + 50)
-end
-
-function CrankKen:drawCompleted()
-    -- This function is no longer used, kept for compatibility
-    gfx.clear()
-    
-    -- Use system font for completion screen
-    local systemFont = gfx.getSystemFont()
-    gfx.setFont(systemFont)
-    
-    local title = "Puzzle Completed!"
-    local titleWidth = systemFont:getTextWidth(title)
-    gfx.drawText(title, (400 - titleWidth) / 2, 100)
-    
-    gfx.drawText("Ⓐ New Game", 150, 150)
-    
-    -- Reset to default font
-    gfx.setFont(gfx.getFont())
 end

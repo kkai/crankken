@@ -8,11 +8,11 @@ import "crankken"
 local pd <const> = playdate
 local gfx <const> = pd.graphics
 
-local crankkenGame
+local crankken_game
 
 function pd.update()
-    if crankkenGame then
-        crankkenGame:update()
+    if crankken_game then
+        crankken_game:update()
     end
     
     pd.timer.updateTimers()
@@ -24,5 +24,5 @@ function pd.gameWillTerminate()
 end
 
 -- Initialize the game
-crankkenGame = CrankKen()
-crankkenGame:showSizeSelection()
+crankken_game = CrankKen()
+crankken_game:show_size_selection()

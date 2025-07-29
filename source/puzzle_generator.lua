@@ -6,7 +6,7 @@ function PuzzleGenerator:init()
     math.randomseed(pd.getSecondsSinceEpoch())
 end
 
-function PuzzleGenerator:generatePuzzle(size)
+function PuzzleGenerator:generate_puzzle(size)
     local puzzle = {
         size = size,
         solution = {},
@@ -14,15 +14,15 @@ function PuzzleGenerator:generatePuzzle(size)
     }
     
     -- Generate a valid Latin square solution
-    puzzle.solution = self:generateLatinSquare(size)
+    puzzle.solution = self:generate_latin_square(size)
     
     -- Create cages from the solution
-    puzzle.cages = self:generateCages(puzzle.solution, size)
+    puzzle.cages = self:generate_cages(puzzle.solution, size)
     
     return puzzle
 end
 
-function PuzzleGenerator:generateLatinSquare(size)
+function PuzzleGenerator:generate_latin_square(size)
     local grid = {}
     
     -- Initialize empty grid
@@ -34,22 +34,22 @@ function PuzzleGenerator:generateLatinSquare(size)
     end
     
     -- Fill the grid using backtracking
-    if self:fillLatinSquare(grid, 1, 1, size) then
+    if self:fill_latin_square(grid, 1, 1, size) then
         return grid
     else
         -- Fallback to a simple pattern if backtracking fails
-        return self:generateSimplePattern(size)
+        return self:generate_simple_pattern(size)
     end
 end
 
-function PuzzleGenerator:fillLatinSquare(grid, x, y, size)
+function PuzzleGenerator:fill_latin_square(grid, x, y, size)
     if y > size then
         return true -- Successfully filled the grid
     end
     
-    local nextX, nextY = x + 1, y
-    if nextX > size then
-        nextX, nextY = 1, y + 1
+    local next_x, next_y = x + 1, y
+    if next_x > size then
+        next_x, next_y = 1, y + 1
     end
     
     -- Try each number from 1 to size
@@ -65,9 +65,9 @@ function PuzzleGenerator:fillLatinSquare(grid, x, y, size)
     end
     
     for _, num in ipairs(numbers) do
-        if self:isValidPlacement(grid, x, y, num, size) then
+        if self:is_valid_placement(grid, x, y, num, size) then
             grid[x][y] = num
-            if self:fillLatinSquare(grid, nextX, nextY, size) then
+            if self:fill_latin_square(grid, next_x, next_y, size) then
                 return true
             end
             grid[x][y] = 0
@@ -77,7 +77,7 @@ function PuzzleGenerator:fillLatinSquare(grid, x, y, size)
     return false
 end
 
-function PuzzleGenerator:isValidPlacement(grid, x, y, num, size)
+function PuzzleGenerator:is_valid_placement(grid, x, y, num, size)
     -- Check row constraint
     for i = 1, size do
         if i ~= x and grid[i][y] == num then
@@ -95,7 +95,7 @@ function PuzzleGenerator:isValidPlacement(grid, x, y, num, size)
     return true
 end
 
-function PuzzleGenerator:generateSimplePattern(size)
+function PuzzleGenerator:generate_simple_pattern(size)
     local grid = {}
     for x = 1, size do
         grid[x] = {}
@@ -106,7 +106,7 @@ function PuzzleGenerator:generateSimplePattern(size)
     return grid
 end
 
-function PuzzleGenerator:generateCages(solution, size)
+function PuzzleGenerator:generate_cages(solution, size)
     local cages = {}
     local used = {}
     
@@ -122,7 +122,7 @@ function PuzzleGenerator:generateCages(solution, size)
     for x = 1, size do
         for y = 1, size do
             if not used[x][y] then
-                local cage = self:createCage(solution, used, x, y, size)
+                local cage = self:create_cage(solution, used, x, y, size)
                 if cage then
                     table.insert(cages, cage)
                 end
@@ -133,17 +133,17 @@ function PuzzleGenerator:generateCages(solution, size)
     return cages
 end
 
-function PuzzleGenerator:createCage(solution, used, startX, startY, size)
-    local cells = {{startX, startY}}
-    used[startX][startY] = true
+function PuzzleGenerator:create_cage(solution, used, start_x, start_y, size)
+    local cells = {{start_x, start_y}}
+    used[start_x][start_y] = true
     
     -- Randomly decide cage size (1-4 cells)
-    local maxCageSize = math.min(4, math.random(1, 3))
+    local max_cage_size = math.min(4, math.random(1, 3))
     
     -- Try to add adjacent cells
-    while #cells < maxCageSize do
+    while #cells < max_cage_size do
         local added = false
-        local lastCell = cells[#cells]
+        local last_cell = cells[#cells]
         local directions = {
             {0, 1}, {0, -1}, {1, 0}, {-1, 0}
         }
@@ -155,13 +155,13 @@ function PuzzleGenerator:createCage(solution, used, startX, startY, size)
         end
         
         for _, dir in ipairs(directions) do
-            local newX = lastCell[1] + dir[1]
-            local newY = lastCell[2] + dir[2]
+            local new_x = last_cell[1] + dir[1]
+            local new_y = last_cell[2] + dir[2]
             
-            if newX >= 1 and newX <= size and newY >= 1 and newY <= size 
-               and not used[newX][newY] then
-                table.insert(cells, {newX, newY})
-                used[newX][newY] = true
+            if new_x >= 1 and new_x <= size and new_y >= 1 and new_y <= size 
+               and not used[new_x][new_y] then
+                table.insert(cells, {new_x, new_y})
+                used[new_x][new_y] = true
                 added = true
                 break
             end
@@ -178,10 +178,10 @@ function PuzzleGenerator:createCage(solution, used, startX, startY, size)
         table.insert(values, solution[cell[1]][cell[2]])
     end
     
-    return self:determineCageOperation(cells, values)
+    return self:determine_cage_operation(cells, values)
 end
 
-function PuzzleGenerator:determineCageOperation(cells, values)
+function PuzzleGenerator:determine_cage_operation(cells, values)
     if #cells == 1 then
         return {
             cells = cells,
