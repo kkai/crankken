@@ -151,7 +151,7 @@ function CrankKen:start_game(size)
     
     if size == 9 then
         -- Use more of the screen for 9x9 puzzles
-        max_grid_width = 390   -- Use even more width for 9x9
+        max_grid_width = 399   -- Use almost full width for 9x9
         max_grid_height = 230  -- Use even more height for 9x9
     else
         max_grid_width = 360   -- Leave room for timer and quit button

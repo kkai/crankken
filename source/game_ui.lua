@@ -194,7 +194,10 @@ function GameUI:draw_game(puzzle, player_grid, selected_cell, quit_button_select
             
             -- Highlight selected cell (only when not on quit button)
             if x == selected_cell.x and y == selected_cell.y and not quit_button_selected then
-                gfx.fillRect(screen_x + 2, screen_y + 2, cell_size - 4, cell_size - 4)
+                -- Adjust highlight margin for smaller cells in 9x9 puzzles
+                local highlight_margin = puzzle.size == 9 and 1 or 2
+                gfx.fillRect(screen_x + highlight_margin, screen_y + highlight_margin, 
+                           cell_size - (highlight_margin * 2), cell_size - (highlight_margin * 2))
                 gfx.setImageDrawMode(gfx.kDrawModeInverted)
             end
             
