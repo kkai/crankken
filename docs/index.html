@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrankKen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans leading-normal tracking-normal">
+
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-md">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-4xl font-bold text-yellow-400">CrankKen</h1>
+                <p class="text-gray-400">A math puzzle game for the Playdate</p>
+            </div>
+            <img src="img/icon.png" alt="CrankKen Icon" class="h-16 w-16 rounded-full">
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+
+        <!-- About Section -->
+        <section id="about" class="mb-12">
+            <h2 class="text-3xl font-bold text-yellow-400 mb-4 border-b-2 border-yellow-400 pb-2">About the Game</h2>
+            <p class="text-gray-300 text-lg">
+                CrankKen is a digital implementation of math puzzle games, designed specifically for the Playdate's unique hardware. Players solve number puzzles by filling grids with digits while satisfying mathematical cage constraints, using the Playdate's crank for smooth number input.
+            </p>
+        </section>
+
+        <!-- Two Column Layout for Features and How to Play -->
+        <div class="md:flex md:space-x-8">
+
+            <!-- Features Section -->
+            <section id="features" class="mb-12 md:w-1/2">
+                <h2 class="text-3xl font-bold text-yellow-400 mb-4 border-b-2 border-yellow-400 pb-2">Game Features</h2>
+                <ul class="list-disc list-inside text-gray-300 space-y-2">
+                    <li>Multiple Grid Sizes: Choose from 3x3, 4x4, 5x6, and 6x6 puzzle grids</li>
+                    <li>Crank Controls: Use the Playdate's crank to cycle through numbers intuitively</li>
+                    <li>Traditional Controls: Alternative button-based input for number entry</li>
+                    <li>Procedural Generation: Dynamically generated puzzles with valid solutions</li>
+                    <li>Visual Feedback: Clear cage boundaries and target display</li>
+                    <li>Completion Detection: Automatic puzzle validation and victory screen</li>
+                </ul>
+            </section>
+
+            <!-- How to Play Section -->
+            <section id="how-to-play" class="mb-12 md:w-1/2">
+                <h2 class="text-3xl font-bold text-yellow-400 mb-4 border-b-2 border-yellow-400 pb-2">How to Play</h2>
+                <div class="text-gray-300 space-y-4">
+                    <div>
+                        <h3 class="text-2xl font-semibold mb-2 text-yellow-300">Basic Rules</h3>
+                        <ol class="list-decimal list-inside space-y-1">
+                            <li>Fill each cell in the grid with numbers from 1 to N (where N is the grid size)</li>
+                            <li>Each row and column must contain each number exactly once</li>
+                            <li>Each outlined cage must satisfy its mathematical operation and target number</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-semibold mb-2 text-yellow-300">Cage Operations</h3>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li><strong>Addition (+):</strong> Sum of all numbers in cage equals target</li>
+                            <li><strong>Subtraction (−):</strong> Absolute difference between two numbers equals target</li>
+                            <li><strong>Multiplication (×):</strong> Product of all numbers in cage equals target</li>
+                            <li><strong>Division (÷):</strong> Division of larger by smaller number equals target</li>
+                            <li><strong>Equals (=):</strong> Single cell must contain the target number</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Controls Section -->
+        <section id="controls" class="mb-12">
+            <h2 class="text-3xl font-bold text-yellow-400 mb-4 border-b-2 border-yellow-400 pb-2">Controls</h2>
+            <ul class="list-disc list-inside text-gray-300 space-y-2">
+                <li><strong>D-pad:</strong> Navigate between cells</li>
+                <li><strong>🅰 Button:</strong> Cycle numbers forward (0 → 1 → 2 → ... → N → 0)</li>
+                <li><strong>🅱 Button:</strong> Cycle numbers backward</li>
+                <li><strong>Crank:</strong> Rotate to cycle through numbers (180° per number)</li>
+                <li><strong>Menu Button:</strong> Clear current cell</li>
+            </ul>
+        </section>
+
+        <!-- Screenshots Section -->
+        <section id="screenshots" class="mb-12">
+            <h2 class="text-3xl font-bold text-yellow-400 mb-4 border-b-2 border-yellow-400 pb-2">Screenshots</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <img src="img/launchImage.png" alt="CrankKen Launch Image" class="shadow-lg rounded-lg border-2 border-gray-700 hover:border-yellow-400 transition duration-300">
+                <img src="img/icon.png" alt="CrankKen Icon" class="shadow-lg rounded-lg border-2 border-gray-700 hover:border-yellow-400 transition duration-300">
+            </div>
+        </section>
+
+        <!-- Download Section -->
+        <section id="download" class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-yellow-400 mb-4">Download</h2>
+            <p class="text-gray-300 mb-4 text-lg">Get CrankKen for your Playdate now!</p>
+            <a href="#" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 px-6 rounded-full transition duration-300 inline-block">
+                Download Now
+            </a>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 shadow-md mt-8">
+        <div class="container mx-auto px-6 py-4">
+            <p class="text-center text-gray-400">Authored by Kai Kunze</p>
+        </div>
+    </footer>
+
+</body>
+</html>
